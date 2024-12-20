@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spotify Music Player</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #121212;
+        color: #fff;
+        overflow-x: hidden;
+      }
+
+      .hero {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(145deg, #1db954, #121212);
+      }
+
+      .hero h1 {
+        font-size: 4rem;
+        margin: 0;
+        animation: fadeInDown 1.5s ease-in-out;
+      }
+
+      .hero p {
+        font-size: 1.5rem;
+        margin-top: 20px;
+        animation: fadeInDown 2s ease-in-out;
+      }
+
+      .hero .cta {
+        margin-top: 40px;
+        padding: 15px 30px;
+        background: #1db954;
+        color: #fff;
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        font-size: 1rem;
+        animation: fadeInUp 2.5s ease-in-out;
+        transition: transform 0.3s ease;
+      }
+
+      .hero .cta:hover {
+        transform: scale(1.1);
+      }
+
+      @keyframes fadeInDown {
+        0% {
+          opacity: 0;
+          transform: translateY(-50px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes fadeInUp {
+        0% {
+          opacity: 0;
+          transform: translateY(50px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .player {
+        margin-top: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .player button {
+        margin: 10px;
+        padding: 10px 20px;
+        background: #1db954;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+
+      .player button:hover {
+        background: #17a743;
+      }
+
+      .player input {
+        margin-top: 10px;
+        width: 300px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="hero">
+      <h1>Music for Everyone</h1>
+      <p>Millions of songs. No credit card needed.</p>
+      <button class="cta" id="loginButton">Log in with Spotify</button>
+    </div>
+
+    <div class="player" id="player" style="display: none">
+      <h2>Now Playing</h2>
+      <p id="trackName">No track playing</p>
+      <button id="playPauseButton">Play</button>
+      <input type="range" id="volumeControl" min="0" max="1" step="0.01" />
+    </div>
+
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+    <script>
+      let token = "";
+      let player;
+
+      async function login() {
+        const clientId = "2a60282a31c54d90a62f25339a6daaf2";
+        const redirectUri = window.location.origin;
+        const scope = "streaming user-read-email user-read-private";
+
+        const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(
+          redirectUri
+        )}&scope=${encodeURIComponent(scope)}`;
+        window.location.href = authUrl;
+      }
+
+      function extractTokenFromUrl() {
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        return params.get("access_token");
+      }
+
+      async function initializePlayer() {
+        token = extractTokenFromUrl();
+        if (!token) return;
+
+        document.getElementById("loginButton").style.display = "none";
+        document.getElementById("player").style.display = "block";
+
+        window.onSpotifyWebPlaybackSDKReady = () => {
+          player = new Spotify.Player({
+            name: "My Web Player",
+            getOAuthToken: (cb) => cb(token),
+            volume: 0.5,
+          });
+
+          player.addListener("ready", ({ device_id }) => {
+            console.log("Ready with Device ID", device_id);
+          });
+
+          player.addListener("not_ready", ({ device_id }) => {
+            console.log("Device ID has gone offline", device_id);
+          });
+
+          player.addListener("player_state_changed", (state) => {
+            if (!state) return;
+
+            const currentTrack = state.track_window.current_track;
+            document.getElementById("trackName").innerText = currentTrack.name;
+          });
+
+          player.connect();
+        };
+      }
+
+      function togglePlay() {
+        player.togglePlay().then(() => {
+          console.log("Toggled playback!");
+        });
+      }
+
+      function setVolume() {
+        const volume = document.getElementById("volumeControl").value;
+        player.setVolume(volume).then(() => {
+          console.log(`Volume set to ${volume}`);
+        });
+      }
+
+      document.getElementById("loginButton").addEventListener("click", login);
+      document
+        .getElementById("playPauseButton")
+        .addEventListener("click", togglePlay);
+      document
+        .getElementById("volumeControl")
+        .addEventListener("input", setVolume);
+
+      initializePlayer();
+    </script>
+  </body>
+</html>
